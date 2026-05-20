@@ -2,27 +2,54 @@
 // Lihtne veebirakendus: tekstiväli + salvestus SQLite andmebaasi (tabel SUVA, veerg TEKST)
 session_start();
 
-$dbFile = __DIR__ . '/data.sqlite';
-$isNew = !file_exists($dbFile);
+// DB configuration: if DB_HOST/DB_NAME/DB_USER are set (cPanel/MySQL), use MySQL, otherwise fallback to SQLite
+$dbHost = getenv('DB_HOST') ?: ($_SERVER['DB_HOST'] ?? null);
+$dbName = getenv('DB_NAME') ?: ($_SERVER['DB_NAME'] ?? null);
+$dbUser = getenv('DB_USER') ?: ($_SERVER['DB_USER'] ?? null);
+$dbPass = getenv('DB_PASS') ?: ($_SERVER['DB_PASS'] ?? null);
+$isMySQL = !empty($dbHost) && !empty($dbName) && !empty($dbUser);
+
 try {
-    $pdo = new PDO('sqlite:' . $dbFile);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $pdo->exec('PRAGMA foreign_keys = ON');
-    if ($isNew) {
+    if ($isMySQL) {
+        $dsn = "mysql:host={$dbHost};dbname={$dbName};charset=utf8mb4";
+        $pdo = new PDO($dsn, $dbUser, $dbPass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        // create tables if missing (safe to run each request)
         $pdo->exec("CREATE TABLE IF NOT EXISTS SUVA (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INT AUTO_INCREMENT PRIMARY KEY,
             TEKST TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         $pdo->exec("CREATE TABLE IF NOT EXISTS SUVA_LIKES (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            suva_id INTEGER NOT NULL,
-            session_id TEXT NOT NULL,
-            kind TEXT CHECK(kind IN ('like','dislike')) NOT NULL,
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            suva_id INT NOT NULL,
+            session_id VARCHAR(128) NOT NULL,
+            kind ENUM('like','dislike') NOT NULL,
             reason TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(suva_id) REFERENCES SUVA(id) ON DELETE CASCADE
-        )");
+            FOREIGN KEY (suva_id) REFERENCES SUVA(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    } else {
+        $dbFile = __DIR__ . '/data.sqlite';
+        $isNew = !file_exists($dbFile);
+        $pdo = new PDO('sqlite:' . $dbFile);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec('PRAGMA foreign_keys = ON');
+        if ($isNew) {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS SUVA (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                TEKST TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )");
+            $pdo->exec("CREATE TABLE IF NOT EXISTS SUVA_LIKES (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                suva_id INTEGER NOT NULL,
+                session_id TEXT NOT NULL,
+                kind TEXT CHECK(kind IN ('like','dislike')) NOT NULL,
+                reason TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(suva_id) REFERENCES SUVA(id) ON DELETE CASCADE
+            )");
+        }
     }
 } catch (Exception $e) {
     die('DB error: ' . htmlspecialchars($e->getMessage()));
@@ -133,8 +160,12 @@ if (!empty($ids)) {
         .err{color:#b00;margin-top:8px}
         .item{padding:12px 0;border-bottom:1px solid #eee}
         .meta{color:#666;font-size:12px}
-        .btn-like,.btn-dislike{background:#eef;padding:6px 8px;border-radius:6px;border:1px solid #ccd;cursor:pointer}
-        .btn-like[aria-pressed="true"],.btn-dislike[aria-pressed="true"]{background:#cfe}
+        .btn-like,.btn-dislike{background:#eef;padding:8px 10px;border-radius:8px;border:1px solid #ccd;cursor:pointer;font-weight:600}
+        .btn-like{color:#064;}
+        .btn-dislike{color:#500}
+        .btn-like .count-like,.btn-dislike .count-dislike{margin-left:6px;font-weight:700}
+        .btn-like[aria-pressed="true"]{background:#dff7e6;border-color:#7ee0a8;color:#075}
+        .btn-dislike[aria-pressed="true"]{background:#ffecec;border-color:#ff9a9a;color:#b30000}
         /* modal */
         #modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);align-items:center;justify-content:center}
         #modal .box{background:#fff;padding:16px;border-radius:8px;max-width:420px;width:90%}
@@ -179,8 +210,8 @@ if (!empty($ids)) {
             <h4>Dislaigi põhjus</h4>
             <textarea id="reason" rows="4" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px"></textarea>
             <div style="margin-top:8px;text-align:right">
-                <button id="cancel">Tühista</button>
-                <button id="confirm">Kinnita</button>
+                <button id="cancel" style="margin-right:8px;padding:6px 10px;border-radius:6px">Tühista</button>
+                <button id="confirm" style="background:#b30000;color:#fff;padding:6px 10px;border-radius:6px;border:none">Kinnita</button>
             </div>
             <div id="modal-err" style="color:#b00;margin-top:8px;display:none"></div>
         </div>
