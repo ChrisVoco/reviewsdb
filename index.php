@@ -34,7 +34,7 @@ function getDB(): PDO {
             tyup        TEXT    NOT NULL CHECK(tyup IN ('agree','disagree')),
             pohjus      TEXT,
             loodud      DATETIME DEFAULT (datetime('now','localtime')),
-            UNIQUE(comment_id)
+            UNIQUE(comment_id, tyup)
         );
     ");
 
@@ -895,36 +895,54 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
 <script>
 "use strict";
 
-// ── Olek ──────────────────────────────────────────────────
-const MAX_LEN = 1000;
-let pendingDisagree = null; // { commentId }
-let theme = localStorage.getItem('theme') || 'dark';
+// ═══════════════════════════════════════════════════════════
+// KONSTANIDID JA OLEK
+// ═══════════════════════════════════════════════════════════
+const CONFIG = {
+    MAX_COMMENT_LENGTH: 1000,
+    MAX_REASON_LENGTH:  300,
+    TOAST_DURATION:     3200,
+    ANIMATION_DURATION: 300,
+    REACTION_TYPES: {
+        AGREE:    'agree',
+        DISAGREE: 'disagree'
+    }
+};
 
-// ── Teema init ─────────────────────────────────────────────
-applyTheme(theme);
+const STATE = {
+    pendingDisagree: null,  // { commentId }
+    theme: localStorage.getItem('theme') || 'dark'
+};
 
-function applyTheme(t) {
-    document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : '');
-    document.getElementById('themeToggle').textContent = t === 'light' ? '☀️' : '🌙';
-    localStorage.setItem('theme', t);
-    theme = t;
+// ═══════════════════════════════════════════════════════════
+// TEEMA HALDUS
+// ═══════════════════════════════════════════════════════════
+function applyTheme(theme) {
+    STATE.theme = theme;
+    document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : '');
+    document.getElementById('themeToggle').textContent = theme === 'light' ? '☀️' : '🌙';
+    localStorage.setItem('theme', theme);
 }
 
+applyTheme(STATE.theme);
+
 document.getElementById('themeToggle').addEventListener('click', () => {
-    applyTheme(theme === 'dark' ? 'light' : 'dark');
+    applyTheme(STATE.theme === 'dark' ? 'light' : 'dark');
 });
 
-// ── Tähe loendur ──────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// KOMMENTAARI SISESTUS
+// ═══════════════════════════════════════════════════════════
 const commentInput = document.getElementById('commentInput');
 const charCount    = document.getElementById('charCount');
 
 commentInput.addEventListener('input', () => {
     const len = commentInput.value.length;
-    charCount.textContent = `${len} / ${MAX_LEN}`;
-    charCount.classList.toggle('warn', len > MAX_LEN * 0.85);
+    charCount.textContent = `${len} / ${CONFIG.MAX_COMMENT_LENGTH}`;
+    charCount.classList.toggle('warn', len > CONFIG.MAX_COMMENT_LENGTH * 0.85);
 });
 
-// ── Enter saadab (Shift+Enter = uus rida) ─────────────────
+// Enter saadab (Shift+Enter = uus rida)
 commentInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -934,11 +952,21 @@ commentInput.addEventListener('keydown', (e) => {
 
 document.getElementById('submitBtn').addEventListener('click', submitComment);
 
-// ── AJAX: Kommentaari lisamine ─────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// KOMMENTAARIDE HALDUS
+// ═══════════════════════════════════════════════════════════
+
+/** Saada uus kommentaar serverisse */
 async function submitComment() {
     const tekst = commentInput.value.trim();
-    if (!tekst) { showToast('Tühi tekst ei salvestu!', 'error'); return; }
-    if (tekst.length > MAX_LEN) { showToast('Tekst on liiga pikk!', 'error'); return; }
+    if (!tekst) {
+        showToast('Tühi tekst ei salvestu!', 'error');
+        return;
+    }
+    if (tekst.length > CONFIG.MAX_COMMENT_LENGTH) {
+        showToast('Tekst on liiga pikk!', 'error');
+        return;
+    }
 
     const btn = document.getElementById('submitBtn');
     btn.classList.add('loading');
@@ -946,10 +974,13 @@ async function submitComment() {
 
     try {
         const data = await ajax('add_comment', { tekst });
-        if (!data.ok) { showToast(data.msg, 'error'); return; }
+        if (!data.ok) {
+            showToast(data.msg, 'error');
+            return;
+        }
 
         commentInput.value = '';
-        charCount.textContent = `0 / ${MAX_LEN}`;
+        charCount.textContent = `0 / ${CONFIG.MAX_COMMENT_LENGTH}`;
         charCount.classList.remove('warn');
         prependComment(data.comment);
         updateCount(1);
@@ -962,7 +993,8 @@ async function submitComment() {
     }
 }
 
-// ── AJAX: Kõigi kommentaaride laadimine lehel avamisel ─────
+/** Laadi kõik kommentaarid lehel avamisel */
+
 async function loadComments() {
     const list = document.getElementById('comments-list');
     try {
@@ -982,7 +1014,7 @@ async function loadComments() {
     }
 }
 
-// ── Kommentaari lisamine listi algusse (uus) ──────────────
+/** Lisama uus kommentaar listi algusse (animatsiooniga) */
 function prependComment(c) {
     const list = document.getElementById('comments-list');
     const empty = list.querySelector('.empty-state');
@@ -992,22 +1024,21 @@ function prependComment(c) {
     list.prepend(card);
 }
 
-// ── Kommentaari lisamine listi lõppu (laadimisel) ─────────
+/** Lisa kommentaar listi lõppu (laadimisel) */
 function appendComment(c) {
     const list = document.getElementById('comments-list');
     list.appendChild(buildCard(c));
 }
 
-// ── Kommentaari kaardi ehitamine ──────────────────────────
+/** Ehita kommentaari kaardi DOM element */
 function buildCard(c) {
     const card = document.createElement('div');
     card.className = 'comment-card';
     card.dataset.id = c.id;
 
-    // Reaktsiooni olek
     const reaction = c.reaction_type || null;
-    if (reaction === 'agree')    card.classList.add('reacted-agree');
-    if (reaction === 'disagree') card.classList.add('reacted-disagree');
+    if (reaction === CONFIG.REACTION_TYPES.AGREE)    card.classList.add('reacted-agree');
+    if (reaction === CONFIG.REACTION_TYPES.DISAGREE) card.classList.add('reacted-disagree');
 
     const agreeCount    = parseInt(c.agree_count    || 0);
     const disagreeCount = parseInt(c.disagree_count || 0);
@@ -1018,12 +1049,12 @@ function buildCard(c) {
             <span class="comment-time">🕐 ${formatTime(c.loodud)}</span>
         </div>
         <div class="comment-actions">
-            <button class="btn-react ${reaction === 'agree' ? 'active-agree' : ''}"
-                    data-action="agree" data-id="${c.id}">
+            <button class="btn-react ${reaction === CONFIG.REACTION_TYPES.AGREE ? 'active-agree' : ''}"
+                    data-action="${CONFIG.REACTION_TYPES.AGREE}" data-id="${c.id}">
                 👍 <span class="agree-count">${agreeCount}</span>
             </button>
-            <button class="btn-react ${reaction === 'disagree' ? 'active-disagree' : ''}"
-                    data-action="disagree" data-id="${c.id}">
+            <button class="btn-react ${reaction === CONFIG.REACTION_TYPES.DISAGREE ? 'active-disagree' : ''}"
+                    data-action="${CONFIG.REACTION_TYPES.DISAGREE}" data-id="${c.id}">
                 👎 <span class="disagree-count">${disagreeCount}</span>
             </button>
             <button class="btn-delete" data-id="${c.id}" title="Kustuta kommentaar">🗑</button>
@@ -1046,63 +1077,74 @@ function buildCard(c) {
     return card;
 }
 
-// ── AJAX: Reaktsiooni käitlemine ──────────────────────────
+// ═══════════════════════════════════════════════════════════
+// REAKTSIOONID
+// ═══════════════════════════════════════════════════════════
+
+/** Käitle reaktsiooni nupp – disagree'l küsi põhjust */
 async function handleReact(commentId, tyup) {
-    if (tyup === 'disagree') {
-        // Ava modal põhjuse küsimiseks
+    if (tyup === CONFIG.REACTION_TYPES.DISAGREE) {
         const card = document.querySelector(`.comment-card[data-id="${commentId}"]`);
         const alreadyDisagree = card && card.classList.contains('reacted-disagree');
 
         if (alreadyDisagree) {
-            // Toggle off — pole põhjust vaja
+            // Toggle off – pole põhjust vaja
             await sendReaction(commentId, tyup, '');
         } else {
-            pendingDisagree = { commentId };
+            // Ava modal põhjuse küsimiseks
+            STATE.pendingDisagree = { commentId };
             openModal();
         }
         return;
     }
 
-    // Agree
+    // Agree – saada kohe
     await sendReaction(commentId, tyup, '');
 }
+
+/** Saada reaktsioon serverisse */
 
 async function sendReaction(commentId, tyup, pohjus) {
     try {
         const data = await ajax('react', { comment_id: commentId, tyup, pohjus });
-        if (!data.ok) { showToast(data.msg || 'Viga reaktsioonis.', 'error'); return; }
+        if (!data.ok) {
+            showToast(data.msg || 'Viga reaktsioonis.', 'error');
+            return;
+        }
         updateCardReaction(commentId, data);
     } catch(e) {
         showToast('Ühenduse viga. Proovi uuesti.', 'error');
     }
 }
 
-// ── Kaardi reaktsiooni uuendamine ─────────────────────────
+/** Uuenda kaardi reaktsioonide visuaal ja loendurid */
+
 function updateCardReaction(commentId, data) {
     const card = document.querySelector(`.comment-card[data-id="${commentId}"]`);
     if (!card) return;
 
-    // Uuenda CSS klassid
+    // Nulli CSS klassid
     card.classList.remove('reacted-agree', 'reacted-disagree');
     card.querySelectorAll('.btn-react').forEach(b => {
         b.classList.remove('active-agree', 'active-disagree');
     });
 
-    if (data.reaction === 'agree') {
+    // Lisa uus olek
+    if (data.reaction === CONFIG.REACTION_TYPES.AGREE) {
         card.classList.add('reacted-agree');
-        card.querySelector('[data-action="agree"]').classList.add('active-agree');
-    } else if (data.reaction === 'disagree') {
+        card.querySelector(`[data-action="${CONFIG.REACTION_TYPES.AGREE}"]`).classList.add('active-agree');
+    } else if (data.reaction === CONFIG.REACTION_TYPES.DISAGREE) {
         card.classList.add('reacted-disagree');
-        card.querySelector('[data-action="disagree"]').classList.add('active-disagree');
+        card.querySelector(`[data-action="${CONFIG.REACTION_TYPES.DISAGREE}"]`).classList.add('active-disagree');
     }
 
     // Uuenda loendurid
     card.querySelector('.agree-count').textContent    = data.agree_count;
     card.querySelector('.disagree-count').textContent = data.disagree_count;
 
-    // Uuenda põhjus
+    // Uuenda põhjus tekst
     let reasonEl = card.querySelector('.disagree-reason');
-    if (data.last_reason && data.reaction === 'disagree') {
+    if (data.last_reason && data.reaction === CONFIG.REACTION_TYPES.DISAGREE) {
         if (!reasonEl) {
             reasonEl = document.createElement('div');
             reasonEl.className = 'disagree-reason';
@@ -1114,25 +1156,30 @@ function updateCardReaction(commentId, data) {
     }
 }
 
-// ── AJAX: Kustutamine ─────────────────────────────────────
+/** Kustuta kommentaar (pärast kinnitust) */
 async function handleDelete(commentId) {
-    if (!confirm('Kas kustutada see kommentaar? Seda ei saa tagasi võtta.')) return;
+    if (!confirm('Kas kustutada see kommentaar? Seda ei saa tagasi võtta.')) {
+        return;
+    }
 
     try {
         const data = await ajax('delete_comment', { comment_id: commentId });
-        if (!data.ok) { showToast(data.msg || 'Kustutamine ebaõnnestus.', 'error'); return; }
+        if (!data.ok) {
+            showToast(data.msg || 'Kustutamine ebaõnnestus.', 'error');
+            return;
+        }
 
         const card = document.querySelector(`.comment-card[data-id="${commentId}"]`);
         if (card) {
-            card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-            card.style.opacity    = '0';
-            card.style.transform  = 'scale(0.95)';
+            card.style.transition = `opacity ${CONFIG.ANIMATION_DURATION}ms ease, transform ${CONFIG.ANIMATION_DURATION}ms ease`;
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.95)';
             setTimeout(() => {
                 card.remove();
                 updateCount(-1);
                 const list = document.getElementById('comments-list');
                 if (!list.children.length) showEmpty();
-            }, 300);
+            }, CONFIG.ANIMATION_DURATION);
         }
 
         showToast('Kommentaar kustutatud.', 'success');
@@ -1141,7 +1188,11 @@ async function handleDelete(commentId) {
     }
 }
 
-// ── Modal funktsioonid ─────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// MODAL (Disagree põhjuse küsimine)
+// ═══════════════════════════════════════════════════════════
+
+/** Ava disagree modal */
 function openModal() {
     const modal = document.getElementById('disagreeModal');
     document.getElementById('disagreeReason').value = '';
@@ -1149,9 +1200,10 @@ function openModal() {
     setTimeout(() => document.getElementById('disagreeReason').focus(), 50);
 }
 
+/** Sulge disagree modal */
 function closeModal() {
     document.getElementById('disagreeModal').classList.remove('open');
-    pendingDisagree = null;
+    STATE.pendingDisagree = null;
 }
 
 document.getElementById('modalCancel').addEventListener('click', closeModal);
@@ -1163,10 +1215,13 @@ document.getElementById('modalConfirm').addEventListener('click', async () => {
         document.getElementById('disagreeReason').focus();
         return;
     }
-    if (!pendingDisagree) { closeModal(); return; }
+    if (!STATE.pendingDisagree) {
+        closeModal();
+        return;
+    }
 
     closeModal();
-    await sendReaction(pendingDisagree.commentId, 'disagree', reason);
+    await sendReaction(STATE.pendingDisagree.commentId, CONFIG.REACTION_TYPES.DISAGREE, reason);
 });
 
 // Sulge modal overlay klikiga
@@ -1179,13 +1234,16 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
 });
 
-// ── Abifunktsioonid ───────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// UTILIIDID
+// ═══════════════════════════════════════════════════════════
 
 /**
  * Universaalne AJAX funktsioon
- * @param {string} action - tegevuse nimi
+ * @param {string} action - tegevuse nimi (add_comment, get_comments, react, delete_comment)
  * @param {object} params - POST parameetrid
- * @param {string} method - GET või POST
+ * @param {string} method - HTTP meetod (GET või POST)
+ * @returns {Promise<object>} Serveri vastus JSON-na
  */
 async function ajax(action, params = {}, method = 'POST') {
     const url = window.location.href.split('?')[0];
@@ -1263,7 +1321,11 @@ function showEmpty() {
     `;
 }
 
-/** Toast teate kuvamine */
+/**
+ * Näita teadet ekraanil (toast)
+ * @param {string} msg - Teate tekst
+ * @param {string} type - Tüüp: 'success', 'error', 'info'
+ */
 function showToast(msg, type = 'info') {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
@@ -1274,12 +1336,14 @@ function showToast(msg, type = 'info') {
     container.appendChild(toast);
 
     setTimeout(() => {
-        toast.style.animation = 'toastOut 0.3s ease forwards';
-        setTimeout(() => toast.remove(), 300);
-    }, 3200);
+        toast.style.animation = `toastOut ${CONFIG.ANIMATION_DURATION}ms ease forwards`;
+        setTimeout(() => toast.remove(), CONFIG.ANIMATION_DURATION);
+    }, CONFIG.TOAST_DURATION);
 }
 
-// ── Käivitus ───────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// KÄIVITUS
+// ═══════════════════════════════════════════════════════════
 loadComments();
 </script>
 
