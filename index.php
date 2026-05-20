@@ -2,57 +2,43 @@
 // Lihtne veebirakendus: tekstiväli + salvestus SQLite andmebaasi (tabel SUVA, veerg TEKST)
 session_start();
 
-// DB configuration: if DB_HOST/DB_NAME/DB_USER are set (cPanel/MySQL), use MySQL, otherwise fallback to SQLite
+// DB configuration: MySQL (cPanel) - nõutud keskkonnamuutujad
 $dbHost = getenv('DB_HOST') ?: ($_SERVER['DB_HOST'] ?? null);
 $dbName = getenv('DB_NAME') ?: ($_SERVER['DB_NAME'] ?? null);
 $dbUser = getenv('DB_USER') ?: ($_SERVER['DB_USER'] ?? null);
 $dbPass = getenv('DB_PASS') ?: ($_SERVER['DB_PASS'] ?? null);
-$isMySQL = !empty($dbHost) && !empty($dbName) && !empty($dbUser);
+
+// Kontrolli, et kõik nõutavad keskkonnamuutujad on määratud
+if (empty($dbHost) || empty($dbName) || empty($dbUser)) {
+    die('Viga: andmebaasi seadistus puudub. Määra .htaccess või php.ini kaudu:<br>' .
+         'SetEnv DB_HOST localhost<br>' .
+         'SetEnv DB_NAME andmebaasi_nimi<br>' .
+         'SetEnv DB_USER kasutaja<br>' .
+         'SetEnv DB_PASS parool');
+}
 
 try {
-    if ($isMySQL) {
-        $dsn = "mysql:host={$dbHost};dbname={$dbName};charset=utf8mb4";
-        $pdo = new PDO($dsn, $dbUser, $dbPass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        // create tables if missing (safe to run each request)
-        $pdo->exec("CREATE TABLE IF NOT EXISTS SUVA (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            TEKST TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-        $pdo->exec("CREATE TABLE IF NOT EXISTS SUVA_LIKES (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            suva_id INT NOT NULL,
-            session_id VARCHAR(128) NOT NULL,
-            kind ENUM('like','dislike') NOT NULL,
-            reason TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (suva_id) REFERENCES SUVA(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-    } else {
-        $dbFile = __DIR__ . '/data.sqlite';
-        $isNew = !file_exists($dbFile);
-        $pdo = new PDO('sqlite:' . $dbFile);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->exec('PRAGMA foreign_keys = ON');
-        if ($isNew) {
-            $pdo->exec("CREATE TABLE IF NOT EXISTS SUVA (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                TEKST TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )");
-            $pdo->exec("CREATE TABLE IF NOT EXISTS SUVA_LIKES (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                suva_id INTEGER NOT NULL,
-                session_id TEXT NOT NULL,
-                kind TEXT CHECK(kind IN ('like','dislike')) NOT NULL,
-                reason TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(suva_id) REFERENCES SUVA(id) ON DELETE CASCADE
-            )");
-        }
-    }
+    $dsn = "mysql:host={$dbHost};dbname={$dbName};charset=utf8mb4";
+    $pdo = new PDO($dsn, $dbUser, $dbPass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    
+    // Loo tabelid, kui neid veel pole
+    $pdo->exec("CREATE TABLE IF NOT EXISTS SUVA (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        TEKST TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    
+    $pdo->exec("CREATE TABLE IF NOT EXISTS SUVA_LIKES (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        suva_id INT NOT NULL,
+        session_id VARCHAR(128) NOT NULL,
+        kind ENUM('like','dislike') NOT NULL,
+        reason TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (suva_id) REFERENCES SUVA(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 } catch (Exception $e) {
-    die('DB error: ' . htmlspecialchars($e->getMessage()));
+    die('MySQL viga: ' . htmlspecialchars($e->getMessage()));
 }
 
 $sessionId = session_id() ?: bin2hex(random_bytes(16));
