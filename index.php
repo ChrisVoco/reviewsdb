@@ -1,25 +1,25 @@
 <?php
-// Lihtne veebirakendus: tekstiväli + salvestus SQLite andmebaasi (tabel SUVA, veerg TEKST)
+// Lihtne veebirakendus: tekstiväli + salvestus MySQL andmebaasi
 session_start();
 
-// DB configuration: MySQL (cPanel) - nõutud keskkonnamuutujad
-$dbHost = getenv('DB_HOST') ?: ($_SERVER['DB_HOST'] ?? null);
-$dbName = getenv('DB_NAME') ?: ($_SERVER['DB_NAME'] ?? null);
-$dbUser = getenv('DB_USER') ?: ($_SERVER['DB_USER'] ?? null);
-$dbPass = getenv('DB_PASS') ?: ($_SERVER['DB_PASS'] ?? null);
-
-// Kontrolli, et kõik nõutavad keskkonnamuutujad on määratud
-if (empty($dbHost) || empty($dbName) || empty($dbUser)) {
-    die('Viga: andmebaasi seadistus puudub. Määra .htaccess või php.ini kaudu:<br>' .
-         'SetEnv DB_HOST localhost<br>' .
-         'SetEnv DB_NAME andmebaasi_nimi<br>' .
-         'SetEnv DB_USER kasutaja<br>' .
-         'SetEnv DB_PASS parool');
+// Laeb .env faili
+$envFile = __DIR__ . '/.env';
+if (file_exists($envFile)) {
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) continue;
+        [$key, $value] = explode('=', $line, 2);
+        $_ENV[trim($key)] = trim($value);
+    }
 }
 
+define('DB_HOST', $_ENV['DB_HOST'] ?? 'localhost');
+define('DB_NAME', $_ENV['DB_NAME'] ?? '');
+define('DB_USER', $_ENV['DB_USER'] ?? '');
+define('DB_PASS', $_ENV['DB_PASS'] ?? '');
+
 try {
-    $dsn = "mysql:host={$dbHost};dbname={$dbName};charset=utf8mb4";
-    $pdo = new PDO($dsn, $dbUser, $dbPass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+    $pdo = new PDO($dsn, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     
     // Loo tabelid, kui neid veel pole
     $pdo->exec("CREATE TABLE IF NOT EXISTS SUVA (
@@ -38,7 +38,27 @@ try {
         FOREIGN KEY (suva_id) REFERENCES SUVA(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 } catch (Exception $e) {
-    die('MySQL viga: ' . htmlspecialchars($e->getMessage()));
+    echo '<div style="background:#ffecec;padding:20px;border-radius:8px;color:#b30000">';
+    echo '<h3>MySQL viga:</h3>';
+    echo '<p>' . htmlspecialchars($e->getMessage()) . '</p>';
+    echo '<hr style="border:none;border-top:1px solid #ccc;margin:12px 0">';
+    echo '<p><strong>Kontrollitud andmed:</strong></p>';
+    echo '<ul>';
+    echo '<li>Host: ' . htmlspecialchars(DB_HOST) . '</li>';
+    echo '<li>Database: ' . htmlspecialchars(DB_NAME) . '</li>';
+    echo '<li>User: ' . htmlspecialchars(DB_USER) . '</li>';
+    echo '<li>Password: ' . (empty(DB_PASS) ? '(TÜH!)' : '***') . '</li>';
+    echo '</ul>';
+    echo '<p><strong>Lahendused:</strong></p>';
+    echo '<ol>';
+    echo '<li>Kontrolli <code>.env</code> faili (peab olema <code>index.php</code> kõrval)</li>';
+    echo '<li>Kontrolli, et andmebaasi nimi on <strong>õige</strong> (cPanel → MySQL Databases)</li>';
+    echo '<li>Kontrolli, et kasutaja nimi on <strong>õige</strong> (cPanel → MySQL Users)</li>';
+    echo '<li>Kontrolli, et parool on <strong>õige</strong></li>';
+    echo '<li>Kontrolli, et kasutaja on lisatud andmebaasile (ALL PRIVILEGES)</li>';
+    echo '</ol>';
+    echo '</div>';
+    exit;
 }
 
 $sessionId = session_id() ?: bin2hex(random_bytes(16));
