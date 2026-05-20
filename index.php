@@ -153,39 +153,47 @@ if (!empty($ids)) {
     <title>Lihtne SUVA</title>
     <style>
         :root{
-            --bg:#eef3f8;
+            --bg-dark:#1a2f4a;
+            --bg-darker:#0f1f33;
             --card:#ffffff;
-            --muted:#6b7280;
+            --card-item:#f9fafb;
+            --muted:#7b8fa3;
             --accent:#0366d6;
             --success:#0a8f44;
             --danger:#b30000;
+            --text-dark:#0f172a;
             --glass: rgba(255,255,255,0.6);
         }
         *{box-sizing:border-box}
-        body{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Arial;margin:0;padding:32px;background:linear-gradient(180deg,var(--bg),#f7fbff)}
+        body{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Arial;margin:0;padding:32px;background:linear-gradient(180deg,var(--bg-dark),var(--bg-darker));min-height:100vh;color:var(--text-dark)}
         .container{max-width:920px;margin:0 auto}
-        .card{background:linear-gradient(180deg,var(--card),#fbfdff);padding:20px;border-radius:12px;box-shadow:0 6px 18px rgba(15,23,42,0.06);margin-bottom:16px}
+        .card{background:var(--card);padding:24px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.15);margin-bottom:16px}
         header.site{display:flex;align-items:center;gap:16px;margin-bottom:8px}
-        header.site h1{margin:0;font-size:20px}
+        header.site h1{margin:0;font-size:22px;color:var(--text-dark)}
         form{display:flex;gap:10px;margin-top:8px}
-        input[type=text]{flex:1;padding:12px;border:1px solid #e6edf6;border-radius:10px;background:linear-gradient(180deg,#fff,#fcfeff);box-shadow:inset 0 1px 0 rgba(0,0,0,0.02)}
-        button{padding:10px 14px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
-        .err{color:var(--danger);margin-top:8px}
-        .items-list{display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px}
-        .item{padding:14px;border-radius:10px;background:linear-gradient(180deg,#ffffff,#fbfdff);box-shadow:0 4px 12px rgba(2,6,23,0.04);border-left:6px solid transparent}
-        .item:nth-child(odd){border-left-color:rgba(3,102,214,0.06)}
+        input[type=text]{flex:1;padding:12px;border:2px solid #d1d5db;border-radius:10px;background:#ffffff;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
+        input[type=text]:focus{outline:none;border-color:var(--accent);box-shadow:0 2px 12px rgba(3,102,214,0.2)}
+        button{padding:11px 16px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;transition:all 0.2s}
+        button:hover{background:#0255c2;box-shadow:0 4px 12px rgba(3,102,214,0.3)}
+        .err{color:var(--danger);margin-top:8px;font-weight:600}
+        .items-list{display:grid;grid-template-columns:1fr;gap:12px;margin-top:16px}
+        .item{padding:16px;border-radius:12px;background:var(--card-item);box-shadow:0 2px 8px rgba(0,0,0,0.08);border-left:5px solid var(--accent)}
+        .item:nth-child(odd){background:#ffffff}
+        .item:nth-child(even){background:#f3f4f6}
         .meta{color:var(--muted);font-size:13px;margin-top:8px}
-        .controls{margin-top:10px;display:flex;gap:8px;align-items:center}
-        .btn-like,.btn-dislike{background:transparent;padding:8px 10px;border-radius:8px;border:1px solid transparent;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:8px}
+        .controls{margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+        .btn-like,.btn-dislike{background:transparent;padding:8px 10px;border-radius:8px;border:1px solid #e5e7eb;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s}
         .btn-like{color:var(--success)}
         .btn-dislike{color:var(--danger)}
-        .badge{display:inline-block;min-width:28px;text-align:center;padding:4px 8px;border-radius:999px;background:#f1f5f9;color:#0f172a;font-weight:700}
-        .btn-like[aria-pressed="true"]{background:rgba(10,143,68,0.08);border-color:rgba(10,143,68,0.12)}
-        .btn-dislike[aria-pressed="true"]{background:rgba(179,0,0,0.06);border-color:rgba(179,0,0,0.12)}
+        .badge{display:inline-block;min-width:28px;text-align:center;padding:4px 8px;border-radius:999px;background:#e5e7eb;color:var(--text-dark);font-weight:700;font-size:13px}
+        .btn-like[aria-pressed="true"]{background:rgba(10,143,68,0.12);border-color:rgba(10,143,68,0.25)}
+        .btn-dislike[aria-pressed="true"]{background:rgba(179,0,0,0.12);border-color:rgba(179,0,0,0.25)}
         /* modal */
-        #modal{display:none;position:fixed;inset:0;background:linear-gradient(rgba(3,7,18,0.45),rgba(3,7,18,0.45));align-items:center;justify-content:center;padding:20px}
-        #modal .box{background:var(--card);padding:18px;border-radius:12px;max-width:520px;width:100%;box-shadow:0 12px 40px rgba(2,6,23,0.2)}
-        #modal h4{margin:0 0 8px 0}
+        #modal{display:none;position:fixed;inset:0;background:rgba(15,31,51,0.6);align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)}
+        #modal .box{background:var(--card);padding:20px;border-radius:14px;max-width:520px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,0.25)}
+        #modal h4{margin:0 0 10px 0;font-size:18px;color:var(--text-dark)}
+        #modal textarea{width:100%;padding:10px;border:2px solid #d1d5db;border-radius:8px;font-family:inherit;font-size:14px}
+        #modal textarea:focus{outline:none;border-color:var(--danger)}
         footer.note{max-width:920px;margin:12px auto;color:var(--muted);font-size:13px}
         @media(min-width:900px){ .items-list{grid-template-columns:1fr} }
     </style>
@@ -202,7 +210,7 @@ if (!empty($ids)) {
         <?php endif; ?>
 
         <h3>Salvestatud kirjed</h3>
-        <div id="items">
+        <div class="items-list">
             <?php if (empty($items)): ?>
                 <div>Ühtegi kirjet pole.</div>
             <?php else: ?>
@@ -210,11 +218,11 @@ if (!empty($ids)) {
                     <div class="item" data-id="<?=$it['id']?>">
                         <div><?=nl2br(htmlspecialchars($it['TEKST']))?></div>
                         <div class="meta">ID: <?=$it['id']?> • <?=$it['created_at']?></div>
-                        <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
-                            <button class="btn-like" data-id="<?=$id?>" aria-pressed="<?=($my && $my['kind']==='like')? 'true':'false'?>">👍 <span class="count-like"><?=$likeCount?></span></button>
-                            <button class="btn-dislike" data-id="<?=$id?>" aria-pressed="<?=($my && $my['kind']==='dislike')? 'true':'false'?>">👎 <span class="count-dislike"><?=$dislikeCount?></span></button>
+                        <div class="controls">
+                            <button class="btn-like" data-id="<?=$id?>" aria-pressed="<?=($my && $my['kind']==='like')? 'true':'false'?>">👍 <span class="badge count-like"><?=$likeCount?></span></button>
+                            <button class="btn-dislike" data-id="<?=$id?>" aria-pressed="<?=($my && $my['kind']==='dislike')? 'true':'false'?>">👎 <span class="badge count-dislike"><?=$dislikeCount?></span></button>
                             <?php if ($my && $my['kind'] === 'dislike' && !empty($my['reason'])): ?>
-                                <div class="meta" data-reason> Põhjus: <?=htmlspecialchars($my['reason'])?></div>
+                                <div class="meta" data-reason>📌 Põhjus: <?=htmlspecialchars($my['reason'])?></div>
                             <?php endif; ?>
                         </div>
                     </div>
