@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teksti Baas</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #f5f0e8;
+    --paper:    #fffdf7;
+    --ink:      #1a1208;
+    --muted:    #7a6e5a;
+    --border:   #d4c9b0;
+    --like:     #2d6a4f;
+    --like-bg:  #d8f3dc;
+    --dis:      #9b2226;
+    --dis-bg:   #fde8e8;
+    --acc:      #c8552a;
+    --radius:   4px;
+  }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 48px 24px 80px;
+  }
+
+  header {
+    max-width: 680px;
+    margin: 0 auto 48px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 16px;
+  }
+
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  header p {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 6px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .sisend-plokk {
+    max-width: 680px;
+    margin: 0 auto 48px;
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .sisend-plokk input {
+    flex: 1;
+    padding: 12px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9rem;
+    background: var(--paper);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .sisend-plokk input:focus { border-color: var(--ink); }
+
+  .sisend-plokk input::placeholder { color: var(--muted); }
+
+  .nupp {
+    padding: 12px 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    border: 1.5px solid var(--ink);
+    border-radius: var(--radius);
+    transition: background 0.12s, color 0.12s;
+    background: var(--ink);
+    color: var(--bg);
+    white-space: nowrap;
+  }
+
+  .nupp:hover { background: var(--acc); border-color: var(--acc); }
+  .nupp:active { transform: translateY(1px); }
+  .nupp:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Kirjete nimekiri */
+  .nimekiri {
+    max-width: 680px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .kirje {
+    background: var(--paper);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    animation: ilmu 0.2s ease;
+  }
+
+  @keyframes ilmu {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .kirje-sisu {
+    padding: 16px 18px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .kirje-tekst {
+    font-family: 'Fraunces', serif;
+    font-size: 1.05rem;
+    font-weight: 300;
+    line-height: 1.5;
+    flex: 1;
+  }
+
+  .kirje-meta {
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  .kirje-toimingud {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    align-items: center;
+    padding-top: 2px;
+  }
+
+  /* Reaktsiooninupud */
+  .react-nupp {
+    padding: 5px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.12s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .react-nupp:hover { border-color: var(--ink); color: var(--ink); }
+
+  .react-nupp.aktiivne-like {
+    background: var(--like-bg);
+    border-color: var(--like);
+    color: var(--like);
+    font-weight: 500;
+  }
+
+  .react-nupp.aktiivne-dislike {
+    background: var(--dis-bg);
+    border-color: var(--dis);
+    color: var(--dis);
+    font-weight: 500;
+  }
+
+  .kustuta-nupp {
+    padding: 5px 8px;
+    font-size: 0.72rem;
+    border-radius: var(--radius);
+    border: 1.5px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.12s;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .kustuta-nupp:hover {
+    border-color: var(--dis);
+    color: var(--dis);
+    background: var(--dis-bg);
+  }
+
+  /* Põhjuse riba */
+  .pohjus-riba {
+    padding: 10px 18px;
+    background: #fff8f0;
+    border-top: 1px dashed var(--border);
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .pohjus-riba strong { color: var(--dis); font-style: normal; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(26,18,8,0.55);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .modal-overlay.nahtav { display: flex; }
+
+  .modal {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    border-radius: var(--radius);
+    padding: 28px;
+    width: 100%;
+    max-width: 420px;
+    animation: modal-sisse 0.15s ease;
+  }
+
+  @keyframes modal-sisse {
+    from { transform: scale(0.95); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
+
+  .modal h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .modal p {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  .modal textarea {
+    width: 100%;
+    padding: 10px 12px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--ink);
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .modal textarea:focus { border-color: var(--ink); }
+
+  .modal-nupud {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    justify-content: flex-end;
+  }
+
+  .nupp-tuhista {
+    padding: 9px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    cursor: pointer;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.12s;
+  }
+
+  .nupp-tuhista:hover { border-color: var(--ink); color: var(--ink); }
+
+  .nupp-kinnita {
+    padding: 9px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    cursor: pointer;
+    border: 1.5px solid var(--dis);
+    border-radius: var(--radius);
+    background: var(--dis);
+    color: #fff;
+    transition: all 0.12s;
+  }
+
+  .nupp-kinnita:hover { background: #7b1a1d; border-color: #7b1a1d; }
+
+  /* Teated */
+  .teated {
+    max-width: 680px;
+    margin: 0 auto 20px;
+  }
+
+  .teade {
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    margin-bottom: 8px;
+    border: 1px solid;
+    animation: ilmu 0.2s ease;
+  }
+
+  .teade.viga { background: var(--dis-bg); border-color: var(--dis); color: var(--dis); }
+  .teade.edu  { background: var(--like-bg); border-color: var(--like); color: var(--like); }
+
+  .tühi-teade {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+    padding: 40px;
+    font-style: italic;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Teksti Baas</h1>
+  <p>Sisesta · Laigi · Dislaigi</p>
+</header>
+
+<div class="teated" id="teated"></div>
+
+<div class="sisend-plokk">
+  <input type="text" id="tekst-sisend" placeholder="Kirjuta midagi..." maxlength="1000" autocomplete="off">
+  <button class="nupp" id="saada-nupp" onclick="lisaKirje()">Saada baasi</button>
+</div>
+
+<div class="nimekiri" id="nimekiri">
+  <div class="tühi-teade">Laen kirjeid…</div>
+</div>
+
+<!-- Dislaigi põhjuse modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>👎 Miks ei meeldi?</h2>
+    <p>Põhjus on kohustuslik — ilma selleta ei saa dislaigida.</p>
+    <textarea id="modal-pohjus" placeholder="Kirjuta põhjus siia..."></textarea>
+    <div id="modal-viga" style="color:var(--dis);font-size:0.75rem;margin-top:6px;display:none;">Põhjus ei tohi olla tühi!</div>
+    <div class="modal-nupud">
+      <button class="nupp-tuhista" onclick="sulgeModal()">Tühista</button>
+      <button class="nupp-kinnita" onclick="kinnitaDislaik()">Dislaigi</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'index.php';
+let modalSuvaId = null;
+
+// ─── Teated ──────────────────────────────────────────────
+function naiteTeade(tekst, tyyp = 'edu', ms = 3000) {
+  const div = document.createElement('div');
+  div.className = `teade ${tyyp}`;
+  div.textContent = tekst;
+  document.getElementById('teated').prepend(div);
+  setTimeout(() => div.remove(), ms);
+}
+
+// ─── API kõned ───────────────────────────────────────────
+async function api(params, meetod = 'GET') {
+  const opts = { method: meetod };
+  if (meetod === 'POST') {
+    opts.body = new URLSearchParams(params);
+    opts.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    const url = `${API}?toiming=${params.toiming}`;
+    const r = await fetch(url, opts);
+    return r.json();
+  } else {
+    const url = `${API}?toiming=${params.toiming}`;
+    const r = await fetch(url);
+    return r.json();
+  }
+}
+
+// ─── Lisa kirje ──────────────────────────────────────────
+async function lisaKirje() {
+  const sisend = document.getElementById('tekst-sisend');
+  const tekst = sisend.value.trim();
+  if (!tekst) { naiteTeade('Tekst ei tohi olla tühi!', 'viga'); return; }
+
+  const btn = document.getElementById('saada-nupp');
+  btn.disabled = true;
+
+  const vastus = await api({ toiming: 'lisa', tekst }, 'POST');
+  btn.disabled = false;
+
+  if (vastus.ok) {
+    sisend.value = '';
+    naiteTeade('Tekst salvestatud!');
+    laeKirjed();
+  } else {
+    naiteTeade(vastus.viga, 'viga');
+  }
+}
+
+// ─── Lae kõik kirjed ─────────────────────────────────────
+async function laeKirjed() {
+  const vastus = await api({ toiming: 'loe' });
+  const nimekiri = document.getElementById('nimekiri');
+
+  if (!vastus.ok) { naiteTeade(vastus.viga, 'viga'); return; }
+
+  if (vastus.kirjed.length === 0) {
+    nimekiri.innerHTML = '<div class="tühi-teade">Ühtegi kirjet pole. Lisa esimene!</div>';
+    return;
+  }
+
+  nimekiri.innerHTML = vastus.kirjed.map(k => kirjeHTML(k)).join('');
+}
+
+function kirjeHTML(k) {
+  const r = k.reaktsioon; // 'like', 'dislike' või null
+  const likeKlass  = r === 'like'    ? 'aktiivne-like'    : '';
+  const disKlass   = r === 'dislike' ? 'aktiivne-dislike' : '';
+  const aeg = new Date(k.loodud).toLocaleString('et-EE');
+
+  const pohjusRiba = (r === 'dislike' && k.pohjus)
+    ? `<div class="pohjus-riba">Põhjus: <strong>${esc(k.pohjus)}</strong></div>`
+    : '';
+
+  return `
+    <div class="kirje" id="kirje-${k.id}">
+      <div class="kirje-sisu">
+        <div>
+          <div class="kirje-tekst">${esc(k.TEKST)}</div>
+          <div class="kirje-meta">#${k.id} · ${aeg}</div>
+        </div>
+        <div class="kirje-toimingud">
+          <button class="react-nupp ${likeKlass}" onclick="reaktsioon(${k.id}, 'like')" title="Laigi">
+            👍 ${r === 'like' ? 'Laigisin' : 'Laigi'}
+          </button>
+          <button class="react-nupp ${disKlass}" onclick="reaktsioon(${k.id}, 'dislike')" title="Dislaigi">
+            👎 ${r === 'dislike' ? 'Dislaigisin' : 'Dislaigi'}
+          </button>
+          <button class="kustuta-nupp" onclick="kustutaKirje(${k.id})" title="Kustuta">✕</button>
+        </div>
+      </div>
+      ${pohjusRiba}
+    </div>`;
+}
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Reaktsioon ──────────────────────────────────────────
+async function reaktsioon(suvaId, tyyp) {
+  if (tyyp === 'dislike') {
+    // Stsenaar 3: põhjus küsitakse modali kaudu — enne salvestamist
+    modalSuvaId = suvaId;
+    document.getElementById('modal-pohjus').value = '';
+    document.getElementById('modal-viga').style.display = 'none';
+    document.getElementById('modal').classList.add('nahtav');
+    document.getElementById('modal-pohjus').focus();
+  } else {
+    // Like — otse
+    // Stsenaar 1: kui oli dislaigitud, asendatakse like'iga
+    // Stsenaar 4: like → dislike → like = olek muutub, põhjus jääb DB-sse varjatult
+    const vastus = await api({ toiming: 'reaktsioon', suva_id: suvaId, reaktsioon: 'like', pohjus: '' }, 'POST');
+    if (vastus.ok) {
+      laeKirjed();
+    } else {
+      naiteTeade(vastus.viga, 'viga');
+    }
+  }
+}
+
+// ─── Modal ───────────────────────────────────────────────
+function sulgeModal() {
+  document.getElementById('modal').classList.remove('nahtav');
+  modalSuvaId = null;
+}
+
+async function kinnitaDislaik() {
+  const pohjus = document.getElementById('modal-pohjus').value.trim();
+
+  // Stsenaar 3: põhjus puudub → ei lase läbi
+  if (!pohjus) {
+    document.getElementById('modal-viga').style.display = 'block';
+    return;
+  }
+
+  sulgeModal();
+  const vastus = await api({
+    toiming: 'reaktsioon',
+    suva_id: modalSuvaId,
+    reaktsioon: 'dislike',
+    pohjus
+  }, 'POST');
+
+  if (vastus.ok) {
+    laeKirjed();
+  } else {
+    naiteTeade(vastus.viga, 'viga');
+  }
+}
+
+// Enter-klahv modalis
+document.getElementById('modal-pohjus').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); kinnitaDislaik(); }
+});
+
+// Klõps väljaspool modali sulgeb selle
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) sulgeModal();
+});
+
+// ─── Kustuta kirje ───────────────────────────────────────
+async function kustutaKirje(suvaId) {
+  // Stsenaar 2: dislaigitud kirje kustutamisel kustub reaktsioon ka (CASCADE)
+  if (!confirm('Kustutad selle kirje? Reaktsioon kustub ka.')) return;
+  const vastus = await api({ toiming: 'kustuta', suva_id: suvaId }, 'POST');
+  if (vastus.ok) {
+    naiteTeade('Kirje kustutatud.');
+    document.getElementById(`kirje-${suvaId}`)?.remove();
+    // Kontrolli, kas nimekiri on tühi
+    if (!document.getElementById('nimekiri').children.length) {
+      document.getElementById('nimekiri').innerHTML =
+        '<div class="tühi-teade">Ühtegi kirjet pole. Lisa esimene!</div>';
+    }
+  } else {
+    naiteTeade(vastus.viga, 'viga');
+  }
+}
+
+// Enter klahv sisestusväljal
+document.getElementById('tekst-sisend').addEventListener('keydown', e => {
+  if (e.key === 'Enter') lisaKirje();
+});
+
+// ─── Käivitus ────────────────────────────────────────────
+// Stsenaar 5: lehte värskendades loetakse DB-st kõik olek uuesti
+laeKirjed();
+</script>
+</body>
+</html>
