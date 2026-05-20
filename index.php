@@ -61,7 +61,7 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
                     echo json_encode(['ok' => false, 'msg' => 'Tekst ei tohi olla tühi.']);
                     exit;
                 }
-                if (mb_strlen($tekst) > MAX_TEXT_LENGTH) {
+                if (strlen($tekst) > MAX_TEXT_LENGTH) {
                     echo json_encode(['ok' => false, 'msg' => 'Tekst on liiga pikk (max ' . MAX_TEXT_LENGTH . ' tähemärki).']);
                     exit;
                 }
