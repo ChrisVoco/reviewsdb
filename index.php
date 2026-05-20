@@ -152,23 +152,42 @@ if (!empty($ids)) {
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Lihtne SUVA</title>
     <style>
-        body{font-family:system-ui,Segoe UI,Arial;margin:24px;background:#f7f7f8}
-        .card{background:#fff;padding:16px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);max-width:800px;margin:0 auto}
-        form{display:flex;gap:8px}
-        input[type=text]{flex:1;padding:8px;border:1px solid #ddd;border-radius:6px}
-        button{padding:8px 12px;border-radius:6px;border:none;background:#0366d6;color:#fff}
-        .err{color:#b00;margin-top:8px}
-        .item{padding:12px 0;border-bottom:1px solid #eee}
-        .meta{color:#666;font-size:12px}
-        .btn-like,.btn-dislike{background:#eef;padding:8px 10px;border-radius:8px;border:1px solid #ccd;cursor:pointer;font-weight:600}
-        .btn-like{color:#064;}
-        .btn-dislike{color:#500}
-        .btn-like .count-like,.btn-dislike .count-dislike{margin-left:6px;font-weight:700}
-        .btn-like[aria-pressed="true"]{background:#dff7e6;border-color:#7ee0a8;color:#075}
-        .btn-dislike[aria-pressed="true"]{background:#ffecec;border-color:#ff9a9a;color:#b30000}
+        :root{
+            --bg:#eef3f8;
+            --card:#ffffff;
+            --muted:#6b7280;
+            --accent:#0366d6;
+            --success:#0a8f44;
+            --danger:#b30000;
+            --glass: rgba(255,255,255,0.6);
+        }
+        *{box-sizing:border-box}
+        body{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Arial;margin:0;padding:32px;background:linear-gradient(180deg,var(--bg),#f7fbff)}
+        .container{max-width:920px;margin:0 auto}
+        .card{background:linear-gradient(180deg,var(--card),#fbfdff);padding:20px;border-radius:12px;box-shadow:0 6px 18px rgba(15,23,42,0.06);margin-bottom:16px}
+        header.site{display:flex;align-items:center;gap:16px;margin-bottom:8px}
+        header.site h1{margin:0;font-size:20px}
+        form{display:flex;gap:10px;margin-top:8px}
+        input[type=text]{flex:1;padding:12px;border:1px solid #e6edf6;border-radius:10px;background:linear-gradient(180deg,#fff,#fcfeff);box-shadow:inset 0 1px 0 rgba(0,0,0,0.02)}
+        button{padding:10px 14px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
+        .err{color:var(--danger);margin-top:8px}
+        .items-list{display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px}
+        .item{padding:14px;border-radius:10px;background:linear-gradient(180deg,#ffffff,#fbfdff);box-shadow:0 4px 12px rgba(2,6,23,0.04);border-left:6px solid transparent}
+        .item:nth-child(odd){border-left-color:rgba(3,102,214,0.06)}
+        .meta{color:var(--muted);font-size:13px;margin-top:8px}
+        .controls{margin-top:10px;display:flex;gap:8px;align-items:center}
+        .btn-like,.btn-dislike{background:transparent;padding:8px 10px;border-radius:8px;border:1px solid transparent;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:8px}
+        .btn-like{color:var(--success)}
+        .btn-dislike{color:var(--danger)}
+        .badge{display:inline-block;min-width:28px;text-align:center;padding:4px 8px;border-radius:999px;background:#f1f5f9;color:#0f172a;font-weight:700}
+        .btn-like[aria-pressed="true"]{background:rgba(10,143,68,0.08);border-color:rgba(10,143,68,0.12)}
+        .btn-dislike[aria-pressed="true"]{background:rgba(179,0,0,0.06);border-color:rgba(179,0,0,0.12)}
         /* modal */
-        #modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);align-items:center;justify-content:center}
-        #modal .box{background:#fff;padding:16px;border-radius:8px;max-width:420px;width:90%}
+        #modal{display:none;position:fixed;inset:0;background:linear-gradient(rgba(3,7,18,0.45),rgba(3,7,18,0.45));align-items:center;justify-content:center;padding:20px}
+        #modal .box{background:var(--card);padding:18px;border-radius:12px;max-width:520px;width:100%;box-shadow:0 12px 40px rgba(2,6,23,0.2)}
+        #modal h4{margin:0 0 8px 0}
+        footer.note{max-width:920px;margin:12px auto;color:var(--muted);font-size:13px}
+        @media(min-width:900px){ .items-list{grid-template-columns:1fr} }
     </style>
 </head>
 <body>
