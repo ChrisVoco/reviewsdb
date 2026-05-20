@@ -80,14 +80,14 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
             // ── Kõigi kommentaaride laadimine ────────────────
             case 'get_comments':
                 $stmt = $db->query("
-                    SELECT s.*,
-                           r.tyup       AS reaction_type,
-                           r.pohjus     AS reaction_pohjus,
-                           r.loodud     AS reaction_time,
+                    SELECT s.id, s.tekst, s.loodud,
                            (SELECT COUNT(*) FROM reactions WHERE comment_id = s.id AND tyup = 'agree')    AS agree_count,
-                           (SELECT COUNT(*) FROM reactions WHERE comment_id = s.id AND tyup = 'disagree') AS disagree_count
+                           (SELECT COUNT(*) FROM reactions WHERE comment_id = s.id AND tyup = 'disagree') AS disagree_count,
+                           (SELECT pohjus FROM reactions WHERE comment_id = s.id AND tyup = 'disagree' LIMIT 1) AS reaction_pohjus,
+                           CASE WHEN (SELECT COUNT(*) FROM reactions WHERE comment_id = s.id AND tyup = 'disagree') > 0 THEN 'disagree'
+                                WHEN (SELECT COUNT(*) FROM reactions WHERE comment_id = s.id AND tyup = 'agree') > 0 THEN 'agree'
+                                ELSE NULL END AS reaction_type
                     FROM suva s
-                    LEFT JOIN reactions r ON r.comment_id = s.id
                     ORDER BY s.loodud DESC
                 ");
                 echo json_encode(['ok' => true, 'comments' => $stmt->fetchAll()]);
